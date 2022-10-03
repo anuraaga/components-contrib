@@ -179,10 +179,10 @@ func (rh *wapcRequestHandler) requestHandler(h fasthttp.RequestHandler) fasthttp
 // handle is like fasthttp.RequestHandler, except it accepts a waPC instance
 // and returns an error.
 func (rh *wapcRequestHandler) handle(ctx *fasthttp.RequestCtx, instance wapc.Instance) error {
-	if uri, err := instance.Invoke(ctx, "rewrite", ctx.RequestURI()); err != nil {
+	if path, err := instance.Invoke(ctx, "rewrite", ctx.URI().Path()); err != nil {
 		return err
 	} else {
-		ctx.Request.SetRequestURIBytes(uri)
+		ctx.Request.URI().SetPath(string(path))
 	}
 	return nil
 }

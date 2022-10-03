@@ -5,8 +5,9 @@ import (
 	"log"
 	"os"
 	"path"
-	"strconv"
 	"testing"
+
+	"github.com/dapr/components-contrib/middleware/http/wasm/internal/test"
 
 	"github.com/dapr/components-contrib/metadata"
 
@@ -14,8 +15,7 @@ import (
 	"github.com/valyala/fasthttp"
 
 	"github.com/dapr/components-contrib/middleware"
-	"github.com/dapr/components-contrib/middleware/http/wasm/basic"
-	"github.com/dapr/components-contrib/middleware/http/wasm/internal/test"
+	"github.com/dapr/components-contrib/middleware/http/wasm/httpwasm"
 )
 
 var guestWasm map[string][]byte
@@ -70,60 +70,17 @@ request[0] Stderr
 `, log.String())
 			},
 		},
-		{
-			name:     "multiple requests",
-			guest:    guestWasm[guestWasmOutput],
-			poolSize: 2,
-			test: func(t *testing.T, handler fasthttp.RequestHandler, log fmt.Stringer) {
-				// Service more requests than the pool size to ensure it works properly.
-				for i := 0; i < 3; i++ {
-					var ctx fasthttp.RequestCtx
-					handler(&ctx)
-				}
-
-				// We expect to see initialization (main) twice, once for each
-				// module in the pool. We expect to see request[1] which shows
-				// round-robin back to the first module in the pool.
-				require.Equal(t, `Info(main ConsoleLog)
-Info(main ConsoleLog)
-Info(request[0] ConsoleLog)
-Debug(wasm stdout: main Stdout
-main Stdout
-request[0] Stdout
-)
-Debug(wasm stderr: main Stderr
-main Stderr
-request[0] Stderr
-)
-Info(request[0] ConsoleLog)
-Debug(wasm stdout: request[0] Stdout
-)
-Debug(wasm stderr: request[0] Stderr
-)
-Info(request[1] ConsoleLog)
-Debug(wasm stdout: request[1] Stdout
-)
-Debug(wasm stderr: request[1] Stderr
-)
-`, log.String())
-			},
-		},
 	}
 
 	for _, tt := range tests {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
-			poolSize := "1"
-			if tc.poolSize > 0 {
-				poolSize = strconv.Itoa(tc.poolSize)
-			}
-
 			wasmPath := path.Join(t.TempDir(), "guest.wasm")
 			require.NoError(t, os.WriteFile(wasmPath, tc.guest, 0o600))
 
-			meta := metadata.Base{Properties: map[string]string{"path": wasmPath, "poolSize": poolSize}}
+			meta := metadata.Base{Properties: map[string]string{"path": wasmPath}}
 			l := test.NewLogger()
-			handlerFn, err := basic.NewMiddleware(l).GetHandler(middleware.Metadata{Base: meta})
+			handlerFn, err := httpwasm.NewMiddleware(l).GetHandler(middleware.Metadata{Base: meta})
 			require.NoError(t, err)
 			tc.test(t, handlerFn(func(*fasthttp.RequestCtx) {}), l.(fmt.Stringer))
 		})

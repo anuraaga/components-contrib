@@ -1,18 +1,20 @@
-package basic
+package httpwasm
 
 import (
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/dapr/components-contrib/middleware/http/wasm/internal/test"
 
 	"github.com/dapr/components-contrib/metadata"
 
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fasthttp"
 
-	"github.com/dapr/components-contrib/middleware"
-	"github.com/dapr/components-contrib/middleware/http/wasm/internal/test"
+	dapr "github.com/dapr/components-contrib/middleware"
 	"github.com/dapr/kit/logger"
 )
 
@@ -30,20 +32,20 @@ func TestMain(m *testing.M) {
 
 func Test_NewMiddleWare(t *testing.T) {
 	l := test.NewLogger()
-	require.Equal(t, &wapcMiddleware{logger: l}, NewMiddleware(l))
+	require.Equal(t, &middleware{logger: l}, NewMiddleware(l))
 }
 
-func Test_wapcMiddleware_log(t *testing.T) {
+func Test_middleware_log(t *testing.T) {
 	l := test.NewLogger()
-	m := &wapcMiddleware{logger: l}
+	m := &middleware{logger: l}
 	message := "alert"
-	m.log(message)
+	m.log(ctx, message)
 
 	require.Equal(t, "Info(alert)\n", l.(fmt.Stringer).String())
 }
 
-func Test_wapcMiddleware_getMetadata(t *testing.T) {
-	m := &wapcMiddleware{}
+func Test_middleware_getMetadata(t *testing.T) {
+	m := &middleware{}
 
 	type testCase struct {
 		name        string
@@ -66,35 +68,12 @@ func Test_wapcMiddleware_getMetadata(t *testing.T) {
 			// Below ends in "is a directory" in unix, and "The handle is invalid." in windows.
 			expectedErr: "error reading path: read ./example: ",
 		},
-		{
-			name: "poolSize defaults to 10",
-			metadata: metadata.Base{Properties: map[string]string{
-				"path": "./example/example.wasm",
-			}},
-			expected: &middlewareMetadata{Path: "./example/example.wasm", PoolSize: 10, guest: exampleWasm},
-		},
-		{
-			name: "poolSize",
-			metadata: metadata.Base{Properties: map[string]string{
-				"path":     "./example/example.wasm",
-				"poolSize": "1",
-			}},
-			expected: &middlewareMetadata{Path: "./example/example.wasm", PoolSize: 1, guest: exampleWasm},
-		},
-		{
-			name: "poolSize invalid",
-			metadata: metadata.Base{Properties: map[string]string{
-				"path":     "./example/example.wasm",
-				"poolSize": "-1",
-			}},
-			expectedErr: `invalid poolSize: strconv.ParseUint: parsing "-1": invalid syntax`,
-		},
 	}
 
 	for _, tt := range tests {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
-			md, err := m.getMetadata(middleware.Metadata{Base: tc.metadata})
+			md, err := m.getMetadata(dapr.Metadata{Base: tc.metadata})
 			if tc.expectedErr == "" {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, md)
@@ -106,8 +85,8 @@ func Test_wapcMiddleware_getMetadata(t *testing.T) {
 	}
 }
 
-func Test_wapcMiddleware_getHandler(t *testing.T) {
-	m := &wapcMiddleware{logger: logger.NewLogger(t.Name())}
+func Test_middleware_getHandler(t *testing.T) {
+	m := &middleware{logger: logger.NewLogger(t.Name())}
 
 	type testCase struct {
 		name        string
@@ -117,20 +96,20 @@ func Test_wapcMiddleware_getHandler(t *testing.T) {
 
 	tests := []testCase{
 		// This just tests the error message prefixes properly. Otherwise, it is
-		// redundant to Test_wapcMiddleware_getMetadata
+		// redundant to Test_middleware_getMetadata
 		{
 			name:        "requires path metadata",
 			metadata:    metadata.Base{Properties: map[string]string{}},
 			expectedErr: "wasm basic: failed to parse metadata: missing path",
 		},
-		// This is more than Test_wapcMiddleware_getMetadata, as it ensures the
+		// This is more than Test_middleware_getMetadata, as it ensures the
 		// contents are actually wasm.
 		{
 			name: "path not wasm",
 			metadata: metadata.Base{Properties: map[string]string{
 				"path": "./example/example.go",
 			}},
-			expectedErr: "wasm basic: error compiling wasm at ./example/example.go: invalid binary",
+			expectedErr: "wasm: error compiling guest: invalid binary",
 		},
 		{
 			name: "ok",
@@ -143,11 +122,10 @@ func Test_wapcMiddleware_getHandler(t *testing.T) {
 	for _, tt := range tests {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
-			h, err := m.getHandler(middleware.Metadata{Base: tc.metadata})
+			h, err := m.getHandler(dapr.Metadata{Base: tc.metadata})
 			if tc.expectedErr == "" {
 				require.NoError(t, err)
-				require.NotNil(t, h.mod)
-				require.NotNil(t, h.pool)
+				require.NotNil(t, h.mw)
 			} else {
 				require.EqualError(t, err, tc.expectedErr)
 			}
@@ -159,17 +137,16 @@ func Test_Example(t *testing.T) {
 	meta := metadata.Base{Properties: map[string]string{
 		// example.wasm was compiled via the following:
 		//	tinygo build -o example.wasm -scheduler=none --no-debug -target=wasi hello.go`
-		"path":     "./example/example.wasm",
-		"poolSize": "2",
+		"path": "./example/example.wasm",
 	}}
 	l := test.NewLogger()
-	handlerFn, err := NewMiddleware(l).GetHandler(middleware.Metadata{Base: meta})
+	handlerFn, err := NewMiddleware(l).GetHandler(dapr.Metadata{Base: meta})
 	require.NoError(t, err)
 	handler := handlerFn(func(*fasthttp.RequestCtx) {})
 
 	var ctx fasthttp.RequestCtx
 	ctx.Request.SetRequestURI("/v1.0/hi")
 	handler(&ctx)
-	require.Equal(t, "/v1.0/hello", string(ctx.RequestURI()))
+	require.Equal(t, "/v1.0/hello", string(ctx.Path()))
 	require.Empty(t, l.(fmt.Stringer).String())
 }
