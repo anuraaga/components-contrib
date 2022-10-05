@@ -158,8 +158,8 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig v0.4.1
 	github.com/aliyun/aliyun-log-go-sdk v0.1.37
 	github.com/apache/dubbo-go-hessian2 v1.11.0
-	github.com/http-wasm/http-wasm-host-go v0.0.0-20221004080550-76596ffe6837
-	github.com/http-wasm/http-wasm-host-go/handler/fasthttp v0.0.0-20221004080550-76596ffe6837
+	github.com/http-wasm/http-wasm-host-go v0.0.0-20221005080711-5b05de8a28f2
+	github.com/http-wasm/http-wasm-host-go/handler/fasthttp v0.0.0-20221005080711-5b05de8a28f2
 	github.com/huaweicloud/huaweicloud-sdk-go-obs v3.21.12+incompatible
 	github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.0.87
 	github.com/ipfs/go-ipfs-files v0.1.1
