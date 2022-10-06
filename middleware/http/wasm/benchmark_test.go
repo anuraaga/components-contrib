@@ -51,8 +51,7 @@ func Benchmark_httpwasm_wat(b *testing.B) {
 
 func benchmark_httpwasm(b *testing.B, path string) {
 	md := metadata.Base{Properties: map[string]string{
-		"path":     path,
-		"poolSize": "1",
+		"path": path,
 	}}
 	l := test.NewLogger()
 	handlerFn, err := httpwasm.NewMiddleware(l).GetHandler(middleware.Metadata{Base: md})
@@ -65,7 +64,7 @@ func benchmark_httpwasm(b *testing.B, path string) {
 func Benchmark_wapc(b *testing.B) {
 	md := metadata.Base{Properties: map[string]string{
 		"path":     "./basic/example/example.wasm",
-		"poolSize": "1",
+		"poolSize": "100",
 	}}
 	l := test.NewLogger()
 	handlerFn, err := basic.NewMiddleware(l).GetHandler(middleware.Metadata{Base: md})
@@ -78,7 +77,7 @@ func Benchmark_wapc(b *testing.B) {
 func Benchmark_wapcflexible(b *testing.B) {
 	md := metadata.Base{Properties: map[string]string{
 		"path":     "./flexible/example/example.wasm",
-		"poolSize": "1",
+		"poolSize": "100",
 	}}
 	l := test.NewLogger()
 	handlerFn, err := flexible.NewMiddleware(l).GetHandler(middleware.Metadata{Base: md})
