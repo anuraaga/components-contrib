@@ -15,6 +15,7 @@ import (
 	"github.com/dapr/components-contrib/metadata"
 	"github.com/dapr/components-contrib/middleware"
 	"github.com/dapr/components-contrib/middleware/http/wasm/basic"
+	"github.com/dapr/components-contrib/middleware/http/wasm/flexible"
 	"github.com/dapr/components-contrib/middleware/http/wasm/httpwasm"
 	"github.com/dapr/components-contrib/middleware/http/wasm/internal/test"
 )
@@ -68,6 +69,19 @@ func Benchmark_wapc(b *testing.B) {
 	}}
 	l := test.NewLogger()
 	handlerFn, err := basic.NewMiddleware(l).GetHandler(middleware.Metadata{Base: md})
+	if err != nil {
+		b.Fatal(err)
+	}
+	benchmarkServerGet(b, handlerFn)
+}
+
+func Benchmark_wapcflexible(b *testing.B) {
+	md := metadata.Base{Properties: map[string]string{
+		"path":     "./flexible/example/example.wasm",
+		"poolSize": "1",
+	}}
+	l := test.NewLogger()
+	handlerFn, err := flexible.NewMiddleware(l).GetHandler(middleware.Metadata{Base: md})
 	if err != nil {
 		b.Fatal(err)
 	}
