@@ -19,9 +19,5 @@ func handle(_ []byte) ([]byte, error) {
 		}
 	}
 	_, err = wapc.HostCall("", "http-handler", "next", []byte{})
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return nil, err
 }
